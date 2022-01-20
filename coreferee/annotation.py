@@ -318,12 +318,12 @@ class Annotator:
                 doc._.coref_chains.__dict__.pop(temp_entry)
             for token in doc:
                 for temp_entry in [t for t in token._.coref_chains.__dict__ if
-                        t.startswith('temp_')][:]:
+                        t.startswith('temp_feature') or t.startswith('temp_vector')][:]:
                     token._.coref_chains.__dict__.pop(temp_entry)
                     for chain in token._.coref_chains:
                         for mention in chain:
                             for inner_temp_entry in [t for t in mention.__dict__ if
-                                    t.startswith('temp_')][:]:
+                                    t.startswith('temp_vector') or t.startswith('temp_feature')][:]:
                                 mention.__dict__.pop(inner_temp_entry)
 
         return doc

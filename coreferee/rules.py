@@ -18,6 +18,7 @@ from os import sep
 from abc import ABC, abstractmethod
 from threading import Lock
 import pkg_resources
+from spacy.language import Language
 from spacy.tokens import Token, Doc
 from .data_model import ChainHolder, Mention
 
@@ -27,7 +28,7 @@ lock = Lock()
 class RulesAnalyzerFactory:
 
     @staticmethod
-    def get_rules_analyzer(nlp):
+    def get_rules_analyzer(nlp: Language):
 
         def read_in_data_files(directory:str, rules_analyzer):
             for data_filename in (filename for filename in

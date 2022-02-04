@@ -10,6 +10,8 @@ from spacy.tokens import Doc, Span, Token
 from ..data_model import Mention
 from ..rules import RulesAnalyzer
 
+import json
+
 
 class GenericLoader(ABC):
     @abstractmethod
@@ -197,6 +199,7 @@ class ParCorLoader(GenericLoader):
 
 
 class PolishCoreferenceCorpusANNLoader(GenericLoader):
+
     @staticmethod
     def load_file(
         doc: Doc, ann_file_lines: List[str], rules_analyzer: RulesAnalyzer
@@ -411,6 +414,93 @@ class LitBankANNLoader(GenericLoader):
                 print("Loaded", index, "documents")
             self.load_file(doc, ann_file_lines_list[index], rules_analyzer)
             docs_to_return.append(doc)
+        print(f"Loaded total of {len(docs_to_return)} documents.")
+        return docs_to_return
+
+class ProdigyLoader(GenericLoader):
+    """ Loader for Prodigy data generated using 'relationship' recipes.
+        See:
+            https://prodi.gy/docs/recipes/#relations
+            https://prodi.gy/docs/api-interfaces#relations
+        **Format assumed**: each child span (anaphor) refers back to a head span (antecedent)
+    """
+    @staticmethod
+    def load_file(doc: Doc, rel_file_lines: list, rules_analyzer: RulesAnalyzer) -> None:
+        rules_analyzer.initialize(doc)
+        token_char_start_indexes = [token.idx for token in doc]
+        mention_labels_to_span_sets = {}
+        for index, rel_file_line in enumerate(rel_file_lines):
+            # Format: for each relation, have a head_span and child_span
+            ## ASSUMPTION: child_span refers back to head_span
+            for span_type in ['head_span', 'child_span']:
+                try:
+                    head_token_start = rel_file_line["head_span"]["token_start"]
+                    head_token_end = rel_file_line["head_span"]["token_end"]
+                    child_token_start = rel_file_line["child_span"]["token_start"]
+                    child_token_end = rel_file_line["child_span"]["token_end"]
+                except KeyError as e:
+                    raise(e)
+
+                head_span = doc[head_token_start:head_token_end + 1]
+                child_span = doc[child_token_start:child_token_end + 1]
+                if child_span.text in mention_labels_to_span_sets:
+                    working_span_set = mention_labels_to_span_sets[child_span.text]
+                else:
+                    working_span_set = set()
+                    mention_labels_to_span_sets[child_span.text] = working_span_set
+                working_span_set.add(head_span)
+        #### Follow LitBankANNLoader code for generating candidates ####
+        for span_set in mention_labels_to_span_sets.values():
+            spans = list(filter(lambda span:
+                rules_analyzer.is_independent_noun(span.root) or \
+                rules_analyzer.is_potential_anaphor(span.root), span_set))
+            spans.sort(key=lambda span:span.start)
+            for index, span in enumerate(spans):
+                include_dependent_siblings = \
+                    len(span.root._.coref_chains.temp_dependent_siblings) > 0 \
+                    and span.root._.coref_chains.temp_dependent_siblings[-1].i \
+                    < span.end
+                working_referent = Mention(span.root, include_dependent_siblings)
+                marked = False
+                if index > 0:
+                    previous_span = spans[index - 1]
+                    if hasattr(previous_span.root._.coref_chains,
+                            'temp_potential_referreds'):
+                        for mention in \
+                                previous_span.root._.coref_chains.temp_potential_referreds:
+                            if mention == working_referent:
+                                mention.true_in_training = True
+                                marked = True
+                                continue
+                if not marked and index < len(spans) - 1:
+                    next_span = spans[index + 1]
+                    if hasattr(next_span.root._.coref_chains, 'temp_potential_referreds'):
+                        for mention in \
+                                next_span.root._.coref_chains.temp_potential_referreds:
+                            if mention == working_referent:
+                                mention.true_in_training = True
+                                continue
+        return
+
+    def load(self, directory_name: str, nlp: Language, rules_analyzer: RulesAnalyzer) -> list:
+        txt_file_contents = []
+        relations_file_contents = []
+
+        for index, jsonl_filename in enumerate(t for t in os.scandir(directory_name) if
+            t.path.endswith('.jsonl')):
+            with open(jsonl_filename, 'r', encoding='UTF8') as jsonl_file:
+                for line in jsonl_file.readlines():
+                    example = json.loads(line)
+                    txt_file_contents.append(example['text'])
+                    relations_file_contents.append(example.get('relations') or [])
+        docs = nlp.pipe(txt_file_contents)
+        docs_to_return = []
+        for index, doc in enumerate(docs):
+            if index % 10 == 0:
+                print('Loaded', index, 'examples so far...')
+            self.load_file(doc, relations_file_contents[index], rules_analyzer)
+            docs_to_return.append(doc)
+        print(f"Loaded total of {len(docs_to_return)} Prodigy examples.")
         return docs_to_return
 
 

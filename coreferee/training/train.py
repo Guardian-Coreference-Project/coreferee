@@ -59,11 +59,12 @@ class TrainingManager:
                 os.sep, config_entry_name))
             if not os.path.isdir(this_model_dir):
                 self.relevant_config_entry_names.append(config_entry_name)
-                model_name = '_'.join((lang, config_entry['model']))
+                model_name = self.gen_model_name(self.lang, config_entry['model'])
+                print(f"{model_name} {config_entry_name}")
                 self.load_model(model_name, config_entry_name,
                     config_entry['from_version'], config_entry['to_version'])
                 if 'vectors_model' in config_entry:
-                    vectors_model_name = '_'.join((lang, config_entry['vectors_model']))
+                    vectors_model_name = self.gen_model_name(self.lang, config_entry['vectors_model'])
                     self.load_model(vectors_model_name, config_entry_name,
                     config_entry['vectors_from_version'],
                     config_entry['vectors_to_version'], is_vector_model=True)
@@ -151,6 +152,17 @@ class TrainingManager:
     def writeln(file, *args):
         file.write(''.join((''.join([str(arg) for arg in args]), '\n')))
 
+    def gen_model_name(self, lang, model):
+        """ Utility function to generate correct model name."""
+        if lang.startswith('gu_'):
+            model_name = '_'.join((lang.split('gu_')[-1], model))
+        else:
+            model_name = '_'.join((lang, model))
+        return model_name
+
+    def trim_lang_name(self, lang):
+        return lang.split('gu_')[-1] if lang.startswith('gu_') else lang
+
     def log_incorrect_annotation(self, temp_log_file, token, correct_referred_token,
             incorrect_referred_token):
         doc = token.doc
@@ -203,12 +215,13 @@ class TrainingManager:
 
     def train_model(self, config_entry_name, config_entry, temp_log_file):
         self.writeln(temp_log_file, 'Config entry name: ', config_entry_name)
-        nlp_name = '_'.join((self.lang, config_entry['model']))
+        nlp_name = self.gen_model_name(self.lang, config_entry['model'])
         nlp = self.nlp_dict[nlp_name]
         self.writeln(temp_log_file,
             'Spacy model: ', nlp_name, ' version ', nlp.meta['version'])
         if 'vectors_model' in config_entry:
-            vectors_nlp_name = '_'.join((self.lang, config_entry['vectors_model']))
+            vectors_nlp_name = self.gen_model_name(self.lang, config_entry['vectors_model'])
+            # '_'.join((self.lang, config_entry['vectors_model']))
             vectors_nlp = self.nlp_dict[vectors_nlp_name]
             self.writeln(temp_log_file,
                 'Spacy vectors model: ', vectors_nlp_name, ' version ',
@@ -279,7 +292,7 @@ class TrainingManager:
         keras_ensemble = self.generate_keras_ensemble(
             model_generator, temp_log_file, docs, tendencies_analyzer)
         this_model_dir = os.sep.join((self.models_dirname,
-            ''.join((COMMON_MODELS_PACKAGE_NAMEPART, self.lang)), config_entry_name))
+            ''.join((COMMON_MODELS_PACKAGE_NAMEPART, self.trim_lang_name(self.lang))), config_entry_name))
         os.mkdir(this_model_dir)
         init_py_filename = os.sep.join((this_model_dir, '__init__.py'))
         with open(init_py_filename, 'w') as init_py_file:

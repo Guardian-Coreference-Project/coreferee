@@ -482,6 +482,8 @@ class RulesAnalyzer(ABC):
                         break
                 if referring_or_governor == referring_or_governor.head:
                     break
+                if referring_or_governor == referring_or_governor.head:
+                    break
                 referring_or_governor = referring_or_governor.head
 
         # Checks whether the two words have different quote arrays

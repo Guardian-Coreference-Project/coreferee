@@ -294,7 +294,7 @@ class TrainingManager:
                 100 * correct_counter / (correct_counter + incorrect_counter), 2
             )
             print("Accuracy: ", "".join((str(accuracy), "%")))
-            if accuracy < last_epoch_accuracy:
+            if accuracy <= last_epoch_accuracy:
                 print("Saving model from epoch", epoch - 1)
                 model = create_thinc_model()
                 model.from_bytes(last_epoch_model)

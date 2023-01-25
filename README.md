@@ -13,6 +13,7 @@ Author: <a href="mailto:richard@explosion.ai">Richard Paul Hudson, Explosion AI<
   - [1.4 Facts and figures](#facts-and-figures)
     - [1.4.1 Covered relevant linguistic features](#covered-relevant-linguistic-features)
     - [1.4.2 Model performance](#model-performance)
+  - [1.5 Training](#training)
 - [2. Interacting with the data model](#interacting-with-the-data-model)
 - [3. How it works](#how-it-works)
   - [3.1 General operation and rules](#general-operation-and-rules)
@@ -293,6 +294,24 @@ The corpus for each language is split up into a training corpus (around 80%) and
 Since coreference between noun phrases is restricted to a small number of cases captured by [simple rules](#noun-pair-detection), the model assessment figures presented here refer solely to [anaphor resolution](#anaphor-pair-analysis). When anaphor resolution accuracy is being assessed for a test document, noun pairs are detected and [added to chains](#building-the-chains) according to the standard rules, but they do not feature in the accuracy figures. On some rare occasions, however, they may have an indirect effect on accuracy by affecting the semantic considerations that determine which anaphors can be added to which chains.
 
 Note that **Total words in training corpora** in the table above refers to 100% of the available data for each language, while the **Anaphors in 20%** columns specify the number of anaphors found in the roughly 20% of this data that is used for model assessment.
+
+<a id="training"></a>
+
+#### 1.5 Training
+
+Follow these instructions to train a new model. We use the `en` model as an example here. For any other languages, follow 
+the same instructions and make the appropriate changes at each step for your language/model.
+
+- Create a folder for holding the data, e.g. `data/`
+- Create a folder for storing the logging files, e.g. `logs/`
+- Get the datasets needed for your model ([ParCor](https://opus.nlpl.eu/ParCor/) and [LitBank](https://github.com/dbamman/litbank) and any other dataset that is useful)
+- Run `python -m coreferee train --lang en --loader_classes [LOADERS] --data_dir data/ --log_dir logs/`  
+where `LOADERS` should be a list of loaders for each dataset (e.g. `ProdigyLoader`, `ParCorLoader`, `LitBankANNLoader`, etc.) 
+
+You can then install the trained model using,
+`python3 -m coreferee install <model_lang>`
+and use it as described in the [Getting started section](#getting-started)
+
 
 <a id="interacting-with-the-data-model"></a>
 

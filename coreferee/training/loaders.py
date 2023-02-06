@@ -445,6 +445,7 @@ class ProdigyLoader(GenericLoader):
                 working_span_set = mention_labels_to_span_sets[child_span.text]
             else:
                 working_span_set = set()
+                working_span_set.add(child_span)  # We need the coreferent to be part of the chain
                 mention_labels_to_span_sets[child_span.text] = working_span_set
             working_span_set.add(head_span)
         #### Follow LitBankANNLoader code for generating candidates ####

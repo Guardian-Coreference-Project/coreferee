@@ -422,7 +422,7 @@ class ProdigyLoader(GenericLoader):
         See:
             https://prodi.gy/docs/recipes/#relations
             https://prodi.gy/docs/api-interfaces#relations
-        **Format assumed**: each child span (anaphor) refers back to a head span (antecedent)
+        **Format assumed**: each head span (anaphor) refers back to a child span (antecedent/coreferent)
     """
     @staticmethod
     def load_file(doc: Doc, rel_file_lines: list, rules_analyzer: RulesAnalyzer) -> None:
@@ -430,25 +430,23 @@ class ProdigyLoader(GenericLoader):
         token_char_start_indexes = [token.idx for token in doc]
         mention_labels_to_span_sets = {}
         for index, rel_file_line in enumerate(rel_file_lines):
-            # Format: for each relation, have a head_span and child_span
-            ## ASSUMPTION: child_span refers back to head_span
-            for span_type in ['head_span', 'child_span']:
-                try:
-                    head_token_start = rel_file_line["head_span"]["token_start"]
-                    head_token_end = rel_file_line["head_span"]["token_end"]
-                    child_token_start = rel_file_line["child_span"]["token_start"]
-                    child_token_end = rel_file_line["child_span"]["token_end"]
-                except KeyError as e:
-                    raise(e)
+            # Format: for each relation, have a head_span and child_span, head_span --> child_span
+            try:
+                head_token_start = rel_file_line["head_span"]["token_start"]
+                head_token_end = rel_file_line["head_span"]["token_end"]
+                child_token_start = rel_file_line["child_span"]["token_start"]
+                child_token_end = rel_file_line["child_span"]["token_end"]
+            except KeyError as e:
+                raise(e)
 
-                head_span = doc[head_token_start:head_token_end + 1]
-                child_span = doc[child_token_start:child_token_end + 1]
-                if child_span.text in mention_labels_to_span_sets:
-                    working_span_set = mention_labels_to_span_sets[child_span.text]
-                else:
-                    working_span_set = set()
-                    mention_labels_to_span_sets[child_span.text] = working_span_set
-                working_span_set.add(head_span)
+            head_span = doc[head_token_start:head_token_end + 1]
+            child_span = doc[child_token_start:child_token_end + 1]
+            if child_span.text in mention_labels_to_span_sets:
+                working_span_set = mention_labels_to_span_sets[child_span.text]
+            else:
+                working_span_set = set()
+                mention_labels_to_span_sets[child_span.text] = working_span_set
+            working_span_set.add(head_span)
         #### Follow LitBankANNLoader code for generating candidates ####
         for span_set in mention_labels_to_span_sets.values():
             spans = list(filter(lambda span:
